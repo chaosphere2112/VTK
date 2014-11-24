@@ -258,19 +258,14 @@ std::string replace(std::string source, const std::string &search,
                     const std::string replace, bool all)
 {
   std::string::size_type pos = 0;
-  bool first = true;
   while ((pos = source.find(search, 0)) != std::string::npos)
     {
     source.replace(pos, search.length(), replace);
-    pos += search.length();
-    if (first)
+    if (!all)
       {
-      first = false;
-      if (!all)
-        {
-        return source;
-        }
+      return source;
       }
+    pos += search.length();
     }
   return source;
 }
@@ -399,6 +394,29 @@ size_t CreatePointIndexBuffer(vtkCellArray *cells, BufferObject &indexBuffer)
     for (int i = 0; i < npts; ++i)
       {
       indexArray.push_back(static_cast<unsigned int>(*(indices++)));
+      }
+    }
+  indexBuffer.Upload(indexArray, vtkgl::BufferObject::ElementArrayBuffer);
+  return indexArray.size();
+}
+
+// used to create an IBO for primatives as lines.  This method treats each line segment
+// as independent.  So for a triangle mesh you would get 6 verts per triangle
+// 3 edges * 2 verts each.  With a line loop you only get 3 verts so half the storage.
+// but... line loops are slower than line segments.
+size_t CreateTriangleLineIndexBuffer(vtkCellArray *cells, BufferObject &indexBuffer)
+{
+  std::vector<unsigned int> indexArray;
+  vtkIdType* indices(NULL);
+  vtkIdType npts(0);
+  indexArray.reserve(cells->GetNumberOfConnectivityEntries()*2);
+
+  for (cells->InitTraversal(); cells->GetNextCell(npts, indices); )
+    {
+    for (int i = 0; i < npts; ++i)
+      {
+      indexArray.push_back(static_cast<unsigned int>(indices[i]));
+      indexArray.push_back(static_cast<unsigned int>(indices[i < npts-1 ? i+1 : 0]));
       }
     }
   indexBuffer.Upload(indexArray, vtkgl::BufferObject::ElementArrayBuffer);

@@ -15,6 +15,8 @@
 #ifndef __vtkGLVBOHelpher_h
 #define __vtkGLVBOHelpher_h
 
+#include "vtkRenderingOpenGL2Module.h" // for export macro
+
 #include "vtkglBufferObject.h"
 #include "vtkglVertexArrayObject.h"
 
@@ -33,14 +35,17 @@ namespace vtkgl
 {
 
 // Process the string, and return a version with replacements.
-std::string replace(std::string source, const std::string &search,
+std::string VTKRENDERINGOPENGL2_EXPORT replace(std::string source, const std::string &search,
                     const std::string replace, bool all = true);
 
 // used to create an IBO for triangle primatives
 size_t CreateTriangleIndexBuffer(vtkCellArray *cells, BufferObject &indexBuffer,
                                  vtkPoints *points, std::vector<unsigned int> &cellPointMap);
 
-// used to create an IBO for point primatives
+// create a IBO for wireframe polys/tris
+size_t CreateTriangleLineIndexBuffer(vtkCellArray *cells, BufferObject &indexBuffer);
+
+// used to create an IBO for primatives as points
 size_t CreatePointIndexBuffer(vtkCellArray *cells, BufferObject &indexBuffer);
 
 // used to create an IBO for line strips and triangle strips
@@ -54,7 +59,7 @@ size_t CreateEdgeFlagIndexBuffer(vtkCellArray *cells, BufferObject &indexBuffer,
                                  vtkDataArray *edgeflags);
 
 // Store the shaders, program, and ibo in a common struct.
-class CellBO
+class VTKRENDERINGOPENGL2_EXPORT CellBO
 {
 public:
   vtkShaderProgram *Program;

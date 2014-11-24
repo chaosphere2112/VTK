@@ -99,18 +99,19 @@ vtkChartXY::vtkChartXY()
   this->AutoAxes = true;
   this->HiddenAxisBorder = 20;
 
-  // The grid is drawn first.
+  // The plots are drawn in a clipped, transformed area.
+  this->AddItem(this->ChartPrivate->Clip);
+
+  // The grid is drawn first in this clipped, transformed area.
   vtkPlotGrid *grid1 = vtkPlotGrid::New();
-  this->AddItem(grid1);
+  this->ChartPrivate->Clip->AddItem(grid1);
   grid1->Delete();
 
   // The second grid for the far side/top axis
   vtkPlotGrid *grid2 = vtkPlotGrid::New();
-  this->AddItem(grid2);
+  this->ChartPrivate->Clip->AddItem(grid2);
   grid2->Delete();
 
-  // The plots are drawn on top of the grid, in a clipped, transformed area.
-  this->AddItem(this->ChartPrivate->Clip);
   // Set up the bottom-left transform, the rest are often not required (set up
   // on demand if used later). Add it as a child item, rendered automatically.
   vtkSmartPointer<vtkContextTransform> corner =
@@ -393,8 +394,15 @@ bool vtkChartXY::Paint(vtkContext2D *painter)
 
   if (this->Title)
     {
+    int offset = 0; // title margin.
+    vtkAxis* topAxis = this->ChartPrivate->axes[vtkAxis::TOP];
+    if (topAxis->GetVisible())
+      {
+      vtkRectf bounds = topAxis->GetBoundingRect(painter);
+      offset += static_cast<int>(bounds.GetHeight());
+      }
     vtkPoints2D *rect = vtkPoints2D::New();
-    rect->InsertNextPoint(this->Point1[0], this->Point2[1]);
+    rect->InsertNextPoint(this->Point1[0], this->Point2[1] + offset);
     rect->InsertNextPoint(this->Point2[0]-this->Point1[0], 10);
     painter->ApplyTextProp(this->TitleProperties);
     painter->DrawStringRect(rect, this->Title);
@@ -762,7 +770,7 @@ bool vtkChartXY::UpdateLayout(vtkContext2D* painter)
       if (axis->GetVisible())
         {
         vtkRectf bounds = axis->GetBoundingRect(painter);
-        if (i == 1 || i == 3)
+        if (i == vtkAxis::TOP || i == vtkAxis::BOTTOM)
           {// Horizontal axes
           border = int(bounds.GetHeight());
           }
@@ -772,6 +780,18 @@ bool vtkChartXY::UpdateLayout(vtkContext2D* painter)
           }
         }
       border += this->GetLegendBorder(painter, i);
+      if (i == vtkAxis::TOP && this->Title)
+        {
+        painter->ApplyTextProp(this->TitleProperties);
+        float bounds[4];
+        painter->ComputeStringBounds(this->Title, bounds);
+        if (bounds[3] > 0)
+          {
+          border += 5 /* title margin */
+                    + bounds[3]; // add the title text height to the border.
+          }
+        }
+
       border = border < this->HiddenAxisBorder ? this->HiddenAxisBorder :
                                                  border;
       if (this->ChartPrivate->Borders[i] != border)
@@ -1541,8 +1561,9 @@ bool vtkChartXY::LocatePointInPlots(const vtkContextMouseEvent &mouse,
         transform->InverseTransformPoints(mouse.GetPos().GetData(),
                                           position.GetData(), 1);
         // Use a tolerance of +/- 5 pixels
-        vtkVector2f tolerance(5*(1.0/transform->GetMatrix()->GetElement(0, 0)),
-                              5*(1.0/transform->GetMatrix()->GetElement(1, 1)));
+        vtkVector2f tolerance(
+          std::fabs(5*(1.0/transform->GetMatrix()->GetElement(0, 0))),
+          std::fabs(5*(1.0/transform->GetMatrix()->GetElement(1, 1))));
         // Iterate through the visible plots and return on the first hit
         vtkIdType segmentIndex = -1;
 

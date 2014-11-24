@@ -33,6 +33,8 @@
 #include "vtkMultiBlockDataSet.h"
 #include "vtkMultiPieceDataSet.h"
 
+#include <algorithm>
+
 //===================================================================
 // We define a helper class that is a subclass of vtkOpenGLPolyDataMapper
 // We use this to get some performance improvements over the generic
@@ -73,12 +75,20 @@ protected:
   // orchistrates the process, much of the work is done in other methods
   virtual void UpdateShader(vtkgl::CellBO &cellBO, vtkRenderer *ren, vtkActor *act);
 
+  // override to use the block opacity
+  virtual vtkUnsignedCharArray *MapScalars(double alpha);
+
 private:
   vtkCompositeMapperHelper(const vtkCompositeMapperHelper&); // Not implemented.
   void operator=(const vtkCompositeMapperHelper&); // Not implemented.
 };
 
 vtkStandardNewMacro(vtkCompositeMapperHelper);
+
+vtkUnsignedCharArray *vtkCompositeMapperHelper::MapScalars(double vtkNotUsed(alpha))
+{
+  return this->Superclass::MapScalars(this->Parent->BlockState.Opacity.top());
+}
 
 void vtkCompositeMapperHelper::SetCameraShaderParameters(vtkgl::CellBO &cellBO,
                                                        vtkRenderer *ren, vtkActor *actor)
@@ -110,8 +120,8 @@ void vtkCompositeMapperHelper::SetPropertyShaderParameters(vtkgl::CellBO &cellBO
 
   // override the opacity
   cellBO.Program->SetUniformf("opacityUniform", this->Parent->BlockState.Opacity.top());
-  double aIntensity = ppty->GetAmbient();
-  double dIntensity = ppty->GetDiffuse();
+  double aIntensity = this->DrawingEdges ? 1.0 : ppty->GetAmbient();  // ignoring renderer ambient
+  double dIntensity = this->DrawingEdges ? 0.0 : ppty->GetDiffuse();
 
   vtkColor3d &aColor = this->Parent->BlockState.AmbientColor.top();
   float ambientColor[3] = {static_cast<float>(aColor[0] * aIntensity), static_cast<float>(aColor[1] * aIntensity), static_cast<float>(aColor[2] * aIntensity)};
@@ -119,7 +129,6 @@ void vtkCompositeMapperHelper::SetPropertyShaderParameters(vtkgl::CellBO &cellBO
   float diffuseColor[3] = {static_cast<float>(dColor[0] * dIntensity), static_cast<float>(dColor[1] * dIntensity), static_cast<float>(dColor[2] * dIntensity)};
   cellBO.Program->SetUniform3f("ambientColorUniform", ambientColor);
   cellBO.Program->SetUniform3f("diffuseColorUniform", diffuseColor);
-
 }
 
 //-----------------------------------------------------------------------------
@@ -470,6 +479,11 @@ void vtkCompositePolyDataMapper2::RenderBlock(vtkRenderer *renderer,
   vtkHardwareSelector *selector = renderer->GetSelector();
   vtkCompositeDataDisplayAttributes* cda = this->GetCompositeDataDisplayAttributes();
 
+  vtkProperty *prop = actor->GetProperty();
+  bool draw_surface_with_edges =
+    (prop->GetEdgeVisibility() && prop->GetRepresentation() == VTK_SURFACE);
+  vtkColor3d ecolor(prop->GetEdgeColor());
+
   bool overrides_visibility = (cda && cda->HasBlockVisibility(flat_index));
   if (overrides_visibility)
     {
@@ -539,8 +553,9 @@ void vtkCompositePolyDataMapper2::RenderBlock(vtkRenderer *renderer,
         {
         helper = vtkCompositeMapperHelper::New();
         helper->Parent = this;
-        helper->SetStatic(1);
+        this->CopyMapperValuesToHelper(helper);
         this->Helpers.insert(std::make_pair(ds, helper));
+        helper->SetInputData(ds);
         }
       else
         {
@@ -549,8 +564,13 @@ void vtkCompositePolyDataMapper2::RenderBlock(vtkRenderer *renderer,
       helper->CurrentInput = ds;
       helper->RenderPieceStart(renderer,actor);
       helper->RenderPieceDraw(renderer,actor);
+      if (draw_surface_with_edges)
+        {
+        this->BlockState.AmbientColor.push(ecolor);
+        helper->RenderEdges(renderer,actor);
+        this->BlockState.AmbientColor.pop();
+        }
       helper->RenderPieceFinish(renderer,actor);
-      helper->RenderEdges(renderer,actor);
       }
 
     if (selector)
@@ -575,6 +595,12 @@ void vtkCompositePolyDataMapper2::RenderBlock(vtkRenderer *renderer,
     }
 }
 
+
+void vtkCompositePolyDataMapper2::CopyMapperValuesToHelper(vtkCompositeMapperHelper *helper)
+{
+  helper->vtkMapper::ShallowCopy(this);
+  helper->SetStatic(1);
+}
 
 // ---------------------------------------------------------------------------
 // Description:
@@ -606,6 +632,15 @@ void vtkCompositePolyDataMapper2::Render(vtkRenderer *ren, vtkActor *actor)
     }
   else // otherwise just reinitialize the shaders
     {
+    // if we have changed recopy our mapper settings to the helpers
+    if (this->GetMTime() > this->HelperMTime)
+      {
+      std::map<const vtkDataSet*, vtkCompositeMapperHelper *>::iterator miter = this->Helpers.begin();
+      for (;miter != this->Helpers.end(); miter++)
+        {
+        this->CopyMapperValuesToHelper(miter->second);
+        }
+      }
     // reset initialized flag on the shaders we use
     std::map<const vtkShaderProgram *, bool>::iterator miter = this->ShadersInitialized.begin();
     for (;miter != this->ShadersInitialized.end(); miter++)

@@ -146,7 +146,7 @@ protected:
 
   // Description:
   // Update the VBO to contain point based values
-  virtual void UpdateVBO(vtkActor *act);
+  virtual void UpdateVBO(vtkRenderer *ren, vtkActor *act);
 
   // The VBO and its layout.
   vtkgl::BufferObject VBO;
@@ -157,7 +157,10 @@ protected:
   vtkgl::CellBO Lines;
   vtkgl::CellBO Tris;
   vtkgl::CellBO TriStrips;
+  vtkgl::CellBO TrisEdges;
+  vtkgl::CellBO TriStripsEdges;
   vtkgl::CellBO *LastBoundBO;
+  bool DrawingEdges;
 
   // values we use to determine if we need to rebuild
   int LastLightComplexity;

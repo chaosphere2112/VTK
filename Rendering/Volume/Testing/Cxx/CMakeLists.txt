@@ -1,23 +1,24 @@
 # These tests are built under all conditions
 set (GenericVolumeCxxTests
+  #  TestGPURayCastCompositeShadeMask.cxx
   ProjectedTetrahedraZoomIn.cxx,NO_VALID
   TestFinalColorWindowLevel.cxx
   TestFixedPointRayCastLightComponents.cxx
   TestGPURayCastAdditive.cxx
   TestGPURayCastCompositeBinaryMask.cxx
-  TestGPURayCastCompositeMaskBlend.cxx
   TestGPURayCastCompositeMask.cxx
-  #  TestGPURayCastCompositeShadeMask.cxx
+  TestGPURayCastCompositeMaskBlend.cxx
   TestGPURayCastCompositeToMIP.cxx
   TestGPURayCastCropping.cxx
-  TestGPURayCastDataTypesMinIP.cxx
   TestGPURayCastDataTypesMIP.cxx
+  TestGPURayCastDataTypesMinIP.cxx
   TestGPURayCastFourComponentsComposite.cxx
   TestGPURayCastFourComponentsCompositeStreaming.cxx
-  TestGPURayCastFourComponentsMinIP.cxx
   TestGPURayCastFourComponentsMIP.cxx
+  TestGPURayCastFourComponentsMinIP.cxx
   TestGPURayCastMIPBinaryMask.cxx
   TestGPURayCastMIPToComposite.cxx
+  TestGPURayCastMapperBenchmark.cxx
   TestGPURayCastNearestDataTypesMIP.cxx
   TestGPURayCastPerspectiveParallel.cxx
   TestMinIntensityRendering.cxx
@@ -37,6 +38,13 @@ set (OpenGLNew_OR_OpenGL2_CxxTests
   TestGPURayCastVolumeRotation.cxx
   TestGPURayCastVolumeScale.cxx
   )
+
+if ("${VTK_RENDERING_BACKEND}" STREQUAL "OpenGL2")
+  list(APPEND OpenGLNew_OR_OpenGL2_CxxTests
+    TestGPURayCastVolumeLightKit.cxx
+    TestGPURayCastPositionalLights.cxx
+    )
+endif()
 
 # These tests are built for the OpenGL backend
 set (VolumeOpenGLCxxTests

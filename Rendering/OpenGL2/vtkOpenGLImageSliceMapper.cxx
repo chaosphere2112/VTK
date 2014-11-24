@@ -460,6 +460,10 @@ void vtkOpenGLImageSliceMapper::RenderPolygon(
     actor->GetTexture()->Render(ren);
     }
   actor->GetMapper()->Render(ren, actor);
+  if (textured)
+    {
+    actor->GetTexture()->PostRender(ren);
+    }
 
   vtkOpenGLCheckErrorMacro("failed after RenderPolygon");
 }
@@ -689,6 +693,12 @@ void vtkOpenGLImageSliceMapper::Render(vtkRenderer *ren, vtkImageSlice *prop)
   this->PolyDataActor->SetUserMatrix(matrix);
   this->BackingPolyDataActor->SetUserMatrix(matrix);
   this->BackgroundPolyDataActor->SetUserMatrix(matrix);
+  if (prop->GetPropertyKeys())
+    {
+    this->PolyDataActor->SetPropertyKeys(prop->GetPropertyKeys());
+    this->BackingPolyDataActor->SetPropertyKeys(prop->GetPropertyKeys());
+    this->BackgroundPolyDataActor->SetPropertyKeys(prop->GetPropertyKeys());
+    }
 
 
   // and now enable/disable as needed for our render

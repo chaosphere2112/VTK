@@ -34,8 +34,13 @@ class vtkTextureUnitManager;
 class vtkOpenGLShaderCache;
 class vtkStdString;
 class vtkTexture;
-class vtkTexturedActor2D;
 class vtkTextureObject;
+class vtkShaderProgram;
+
+namespace vtkgl
+{
+class VertexArrayObject;
+}
 
 class VTKRENDERINGOPENGL2_EXPORT vtkOpenGLRenderWindow : public vtkRenderWindow
 {
@@ -203,6 +208,15 @@ public:
   // Useful for measurement only.
   virtual void WaitForCompletion();
 
+  // Description:
+  // Helper function that draws a quad on the screen
+  // at the specified vertex coordinates and if
+  // tcoords are not NULL with the specified
+  // texture coordinates.
+  static void RenderQuad(
+    float *verts, float *tcoords,
+    vtkShaderProgram *program, vtkgl::VertexArrayObject *vao);
+
 protected:
   vtkOpenGLRenderWindow();
   ~vtkOpenGLRenderWindow();
@@ -237,6 +251,13 @@ protected:
   // Description:
   // Flag telling if a framebuffer-based offscreen is currently in use.
   int OffScreenUseFrameBuffer;
+
+  // Description:
+  // Variables used by the framebuffer-based offscreen method.
+  int NumberOfFrameBuffers;
+  unsigned int TextureObjects[4]; // really GLuint
+  unsigned int FrameBufferObject; // really GLuint
+  unsigned int DepthRenderBufferObject; // really GLuint
 
   // Description:
   // Create a not-off-screen window.
@@ -276,7 +297,7 @@ protected:
 
   vtkTextureUnitManager *TextureUnitManager;
 
-  vtkTexturedActor2D *DrawPixelsActor;
+  vtkTextureObject *DrawPixelsTextureObject;
 
   // Description:
   // Replacement for the old glDrawPixels function

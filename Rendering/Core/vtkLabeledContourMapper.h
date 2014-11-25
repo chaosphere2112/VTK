@@ -64,6 +64,12 @@ public:
   virtual vtkTextProperty* GetTextProperty();
 
   // Description:
+  // Set/Get label visibility state
+  vtkSetMacro(LabelVisibility, int);
+  vtkGetMacro(LabelVisibility, int);
+  vtkBooleanMacro(LabelVisibility, int);
+
+  // Description:
   // The polydata mapper used to render the contours.
   vtkGetNewMacro(PolyDataMapper, vtkPolyDataMapper)
 
@@ -91,6 +97,8 @@ protected:
 
   bool AllocateTextActors(vtkIdType num);
   bool FreeTextActors();
+
+  int LabelVisibility;
   vtkIdType NumberOfTextActors;
   vtkIdType NumberOfUsedTextActors;
   vtkTextActor3D **TextActors;

@@ -155,6 +155,7 @@ vtkObjectFactoryNewMacro(vtkLabeledContourMapper)
 //------------------------------------------------------------------------------
 vtkLabeledContourMapper::vtkLabeledContourMapper()
 {
+  this->LabelVisibility = 1;
   this->TextActors = NULL;
   this->NumberOfTextActors = 0;
   this->NumberOfUsedTextActors = 0;
@@ -187,6 +188,12 @@ void vtkLabeledContourMapper::Render(vtkRenderer *ren, vtkActor *act)
 {
   if (!this->CheckInputs(ren))
     {
+    return;
+    }
+
+  if (!this->LabelVisibility)
+    {
+    this->RenderPolyData(ren, act);
     return;
     }
 
